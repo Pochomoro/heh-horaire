@@ -19,13 +19,21 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python fetch.py
+      # Le serveur de l'école ne répond pas toujours du premier coup
+      # depuis GitHub : jusqu'à 5 essais, 2 min d'écart.
+      - name: Fetch
+        run: |
+          for i in 1 2 3 4 5; do
+            python fetch.py && exit 0
+            echo "Essai $i raté, nouvel essai dans 2 min"; sleep 120
+          done
+          exit 1
       # Un commit par jour (l'heure de mise à jour change) : GitHub Pages
       # republie la page, et l'activité empêche GitHub de couper le cron
       # après 60 jours d'inactivité.
