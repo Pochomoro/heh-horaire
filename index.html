@@ -3,279 +3,619 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Horaire MA1 IA</title>
-<meta name="theme-color" content="#eef1f5">
+<meta name="theme-color" content="#f2f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1117" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Horaire">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f4fd1'/%3E%3Crect x='12' y='14' width='18' height='16' rx='3' fill='%23fff'/%3E%3Crect x='34' y='14' width='18' height='26' rx='3' fill='%23fff' opacity='.7'/%3E%3Crect x='12' y='34' width='18' height='16' rx='3' fill='%23fff' opacity='.7'/%3E%3Crect x='34' y='44' width='18' height='6' rx='3' fill='%23ff7a57'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: one-thumb agenda — sticky week bar + day strip, then one big card per class */
+/* Layout: drafting-sheet planner. Sticky title block (option, week, Jour/Semaine),
+   then either a day agenda of tinted cards or a 5-column time grid on a faint mm grid.
+   Each course keeps one hue everywhere (card, block, sheet). */
 :root {
-  --bg: #eef1f5;
-  --surface: #ffffff;
-  --fg: #111c27;
-  --muted: #5d6b7a;
-  --line: #d6dde6;
-  --accent: #2f55d4;
+  --paper: #f2f4f7;
+  --sheet: #ffffff;
+  --ink: #121d28;
+  --muted: #5c6b7b;
+  --rule: #d9e0e8;
+  --grid: #e6ebf0;
+  --accent: #1f4fd1;
   --accent-ink: #ffffff;
-  --now: #e2562b;
-  --stripe-l: 52%;
-  --stripe-s: 62%;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --now: #e5482a;
+  /* course tints (OKLCH lightness/chroma, hue comes per course) */
+  --tint-l: 0.94; --tint-c: 0.045;
+  --edge-l: 0.62; --edge-c: 0.15;
+  --deep-l: 0.38; --deep-c: 0.12;
+  --shadow: 0 1px 2px rgb(18 29 40 / .06), 0 4px 14px rgb(18 29 40 / .05);
+  --display: "Archivo", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  --body: "Archivo", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --hours-w: 2.1rem;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d141b; --surface: #16202a; --fg: #e8eef4; --muted: #8f9eae; --line: #263443;
-    --accent: #7c9bff; --accent-ink: #0d141b; --now: #ff8a5c; --stripe-l: 64%; --stripe-s: 70%;
+    --paper: #0b1117; --sheet: #121b24; --ink: #e7edf3; --muted: #8b9bab; --rule: #22303d; --grid: #17222d;
+    --accent: #86a5ff; --accent-ink: #0b1117; --now: #ff7a57;
+    --tint-l: 0.31; --tint-c: 0.06; --edge-l: 0.72; --edge-c: 0.14; --deep-l: 0.9; --deep-c: 0.07;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d141b; --surface: #16202a; --fg: #e8eef4; --muted: #8f9eae; --line: #263443;
-  --accent: #7c9bff; --accent-ink: #0d141b; --now: #ff8a5c; --stripe-l: 64%; --stripe-s: 70%;
+  --paper: #0b1117; --sheet: #121b24; --ink: #e7edf3; --muted: #8b9bab; --rule: #22303d; --grid: #17222d;
+  --accent: #86a5ff; --accent-ink: #0b1117; --now: #ff7a57;
+  --tint-l: 0.31; --tint-c: 0.06; --edge-l: 0.72; --edge-c: 0.14; --deep-l: 0.9; --deep-c: 0.07;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3);
   color-scheme: dark;
 }
+
 * { box-sizing: border-box; }
 :root { padding-bottom: env(safe-area-inset-bottom, 0px); }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--body); -webkit-text-size-adjust: 100%; }
-button { font: inherit; color: inherit; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 16px/1.45 var(--body); font-variation-settings: "wdth" 100;
+  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.c { /* per-course colors, --h set inline */
+  --tint: oklch(var(--tint-l) var(--tint-c) var(--h));
+  --edge: oklch(var(--edge-l) var(--edge-c) var(--h));
+  --deep: oklch(var(--deep-l) var(--deep-c) var(--h));
+}
 
-.wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 48px; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 0 40px; }
 
+/* ---------- title block ---------- */
 header.top {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  padding-block: 14px 10px; margin: 0 -16px; padding-inline: 16px;
-  border-bottom: 1px solid var(--line);
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+  margin-inline: -16px; padding-inline: 16px; padding-block: 12px 10px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--rule);
 }
-.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.brand h1 { font: 800 1.35rem/1.1 var(--display); margin: 0; letter-spacing: -0.01em; }
-.brand .opt { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.weekbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-.weekbar .lbl { flex: 1; min-width: 0; text-align: center; }
-.weekbar .lbl b { display: block; font: 600 1rem/1.2 var(--display); }
-.weekbar .lbl span { font-size: .8rem; color: var(--muted); }
+.row1 { display: flex; align-items: center; gap: 12px; }
+.ident { flex: 1; min-width: 0; }
+.eyebrow {
+  font: 600 .68rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.ident h1 {
+  margin: 3px 0 0; font: 800 clamp(1.1rem, 5.6vw, 1.7rem)/1.05 var(--display); font-variation-settings: "wdth" 118;
+  letter-spacing: -.01em; text-wrap: balance;
+}
+.eyebrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg {
+  display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 12px;
+  background: var(--sheet); border: 1px solid var(--rule); flex: none; position: relative;
+}
+.seg button {
+  border: 0; background: none; padding: 7px 12px; border-radius: 9px; font-weight: 600; font-size: .85rem;
+  color: var(--muted); position: relative; z-index: 1; transition: color .2s;
+}
+.seg button[aria-pressed="true"] { color: var(--accent-ink); }
+.seg .knob {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 9px;
+  background: var(--accent); transition: transform .25s cubic-bezier(.3,.7,.2,1);
+}
+.seg[data-v="semaine"] .knob { transform: translateX(100%); }
+
+.row2 { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .nav {
-  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
-  background: var(--surface); font-size: 1.2rem; cursor: pointer; flex: none;
+  width: 40px; height: 40px; flex: none; border-radius: 11px; border: 1px solid var(--rule);
+  background: var(--sheet); display: grid; place-items: center;
 }
-.nav:disabled { opacity: .35; cursor: default; }
-.today-btn {
-  height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--accent);
-  background: transparent; color: var(--accent); font-weight: 600; font-size: .85rem; cursor: pointer; flex: none;
+.nav svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.nav:disabled { opacity: .3; cursor: default; }
+.wk { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 8px; }
+.wk .num {
+  font: 700 .78rem/1 var(--mono); padding: 4px 6px; border-radius: 6px;
+  background: var(--ink); color: var(--paper); letter-spacing: .02em;
 }
+.wk .rng { font: 600 1rem/1.2 var(--display); font-variation-settings: "wdth" 110; white-space: nowrap; }
+.todaybtn {
+  height: 40px; padding: 0 12px; flex: none; border-radius: 11px; font-weight: 600; font-size: .82rem;
+  border: 1px solid var(--rule); background: var(--sheet);
+}
+.todaybtn[data-on="1"] { border-color: var(--now); color: var(--now); }
 
-.days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
+.days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.v-semaine .days { grid-template-columns: var(--hours-w) repeat(5, minmax(0, 1fr)); gap: 3px; }
+.days .spacer { display: none; }
+.v-semaine .days .spacer { display: block; }
 .day {
-  border: 1px solid var(--line); background: var(--surface); border-radius: 12px;
-  padding: 7px 0 6px; cursor: pointer; display: grid; justify-items: center; gap: 1px; position: relative;
+  border: 1px solid var(--rule); background: var(--sheet); border-radius: 12px; padding: 6px 0 5px;
+  display: grid; justify-items: center; gap: 2px; position: relative; min-width: 0;
 }
-.day .dn { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.day .dd { font: 700 1.15rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
-.day .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
-.day .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: .6; }
-.day.empty .dd { color: var(--muted); font-weight: 500; }
-.day.is-today { border-color: var(--now); }
-.day.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.day.sel .dn { color: var(--accent-ink); opacity: .85; }
-.day.sel .dots i { background: var(--accent-ink); opacity: .9; }
+.day .dn { font: 600 .66rem/1 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.day .dd { font: 700 1.12rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.day .bar { display: flex; gap: 2px; height: 4px; width: 60%; justify-content: center; }
+.day .bar i { flex: 1; max-width: 8px; border-radius: 2px; background: var(--edge); }
+.day.off .dd { color: var(--muted); font-weight: 500; }
+.day.today { border-color: var(--now); }
+.day.today .dn { color: var(--now); }
+.day.sel { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.day.sel .dn { color: var(--paper); opacity: .7; }
+.v-semaine .day.sel { background: var(--sheet); border-color: var(--rule); color: var(--ink); }
+.v-semaine .day.sel .dn { color: var(--muted); opacity: 1; }
+.v-semaine .day.today { background: var(--now); border-color: var(--now); color: #fff; }
+.v-semaine .day.today .dn { color: #fff; opacity: .85; }
 
-.dayhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 20px 2px 10px; }
-.dayhead h2 { font: 800 1.6rem/1.1 var(--display); margin: 0; text-wrap: balance; }
-.dayhead span { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+/* ---------- day view ---------- */
+.dayhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 22px 2px 12px; flex-wrap: wrap; }
+.dayhead h2 {
+  margin: 0; font: 800 1.9rem/1 var(--display); font-variation-settings: "wdth" 118; letter-spacing: -.015em;
+}
+.dayhead .sum { font: 500 .82rem/1.3 var(--mono); color: var(--muted); }
 
-.list { display: grid; gap: 10px; }
+.banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; margin-bottom: 12px;
+  background: color-mix(in srgb, var(--now) 12%, var(--sheet)); color: var(--ink); font-size: .92rem;
+  border: 1px solid color-mix(in srgb, var(--now) 35%, transparent);
+}
+.banner .pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--now); flex: none; }
+.banner b { font-weight: 700; }
+
+.agenda { display: grid; gap: 8px; }
 .card {
-  --h: 210;
-  background: var(--surface); border-radius: 16px; padding: 14px 16px 14px 18px;
-  display: grid; grid-template-columns: 4.2rem 1fr; gap: 4px 14px; position: relative; overflow: hidden;
-  border: 1px solid var(--line);
+  display: grid; grid-template-columns: 4.1rem minmax(0, 1fr); gap: 0 14px; align-items: start;
+  padding: 14px 14px 14px 12px; border-radius: 16px; background: var(--tint);
+  border: 1px solid color-mix(in srgb, var(--edge) 35%, transparent); position: relative;
+  text-align: left; width: 100%;
 }
-.card::before {
-  content: ""; position: absolute; inset: 0 auto 0 0; width: 6px;
-  background: hsl(var(--h) var(--stripe-s) var(--stripe-l));
+.card .t { border-right: 2px solid var(--edge); padding-right: 10px; }
+.card .t b { display: block; font: 700 1.08rem/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.card .t span { display: block; font: 500 .88rem/1.3 var(--mono); color: var(--muted); }
+.card .t em { display: block; margin-top: 6px; font: 600 .7rem/1 var(--body); font-style: normal; color: var(--deep); letter-spacing: .04em; }
+.card h3 {
+  margin: 0 0 8px; font: 700 1.1rem/1.22 var(--display); font-variation-settings: "wdth" 104;
+  color: var(--deep); overflow-wrap: anywhere; text-wrap: balance;
 }
-.time { font: 700 1.05rem/1.25 var(--mono); font-variant-numeric: tabular-nums; }
-.time small { display: block; font-weight: 500; color: var(--muted); font-size: .9rem; }
-.time .dur { display: block; margin-top: 4px; font: 500 .72rem var(--body); color: var(--muted); }
-.info { min-width: 0; }
-.info h3 { font: 600 1.12rem/1.25 var(--body); margin: 0 0 6px; overflow-wrap: anywhere; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: .92rem; color: var(--muted); }
-.room {
-  font: 700 .95rem/1 var(--mono); color: var(--fg); padding: 5px 8px; border-radius: 8px;
-  border: 1.5px solid currentColor;
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .9rem; color: var(--muted); }
+.plate {
+  font: 700 .95rem/1 var(--mono); color: var(--ink); background: var(--sheet);
+  padding: 5px 8px; border-radius: 7px; box-shadow: inset 0 0 0 1.5px var(--edge);
 }
-.room.none { color: var(--muted); border-style: dashed; font-weight: 500; }
-.tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
-.tag.opt { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
-.note { grid-column: 2; font-size: .85rem; color: var(--muted); }
-.card.now { border-color: var(--now); box-shadow: 0 0 0 1px var(--now); }
-.card.now .live { color: var(--now); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
-.card.past { opacity: .55; }
+.plate.none { box-shadow: inset 0 0 0 1.5px var(--rule); color: var(--muted); font-weight: 500; }
+.chip { font: 600 .66rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; background: var(--sheet); color: var(--muted); }
+.chip.pass { color: var(--accent); }
+.note { grid-column: 2; margin-top: 8px; font-size: .84rem; color: var(--muted); }
+.card.live { box-shadow: 0 0 0 2px var(--now), var(--shadow); }
+.card.live .t em { color: var(--now); }
+.card.done { opacity: .5; }
+.pause {
+  display: flex; align-items: center; gap: 10px; padding: 0 4px; font: 500 .75rem/1 var(--mono); color: var(--muted);
+}
+.pause::before, .pause::after { content: ""; flex: 1; border-top: 1px dashed var(--rule); }
+.empty {
+  padding: 44px 20px; text-align: center; border-radius: 18px; border: 1.5px dashed var(--rule); color: var(--muted);
+}
+.empty b { display: block; font: 800 1.35rem/1.2 var(--display); font-variation-settings: "wdth" 115; color: var(--ink); margin-bottom: 4px; }
 
-.gap { text-align: center; font-size: .8rem; color: var(--muted); padding: 2px 0; }
-.empty-day {
-  text-align: center; padding: 40px 16px; border: 1.5px dashed var(--line); border-radius: 16px; color: var(--muted);
+/* ---------- week view ---------- */
+.grid {
+  margin-top: 12px; display: grid; grid-template-columns: var(--hours-w) repeat(5, minmax(0, 1fr)); gap: 0 3px;
+  position: relative;
 }
-.empty-day b { display: block; font: 800 1.3rem var(--display); color: var(--fg); margin-bottom: 4px; }
+.hours { position: relative; }
+.hours span {
+  position: absolute; right: 6px; transform: translateY(-50%);
+  font: 500 .66rem/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.col {
+  position: relative; border-radius: 10px; background-color: var(--sheet);
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px);
+  background-size: 100% var(--hh), 100% calc(var(--hh) / 4);
+  background-position: 0 var(--off), 0 var(--off);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.col.today { box-shadow: inset 0 0 0 1.5px var(--now); }
+.blk {
+  position: absolute; left: 2px; right: 2px; border-radius: 7px; padding: 4px 3px 4px 4px;
+  background: var(--tint); border: 0; text-align: left; overflow: hidden;
+  border-left: 3px solid var(--edge); display: flex; flex-direction: column; gap: 2px;
+  transition: transform .15s;
+}
+.blk:active { transform: scale(.97); }
+.blk .bt { font: 700 .72rem/1.15 var(--display); font-variation-settings: "wdth" 72; letter-spacing: -.01em; color: var(--deep); overflow-wrap: break-word; }
+.blk .br { font: 700 .64rem/1 var(--mono); color: var(--ink); margin-top: auto; }
+.blk .bh { font: 500 .6rem/1 var(--mono); color: var(--muted); }
+.blk.done { opacity: .55; }
+.nowline { position: absolute; left: -4px; right: 0; height: 2px; background: var(--now); z-index: 3; pointer-events: none; }
+.nowline::before { content: ""; position: absolute; left: 0; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--now); }
+.weekempty { grid-column: 2 / -1; }
+.wsum { margin: 18px 2px 0; font: 500 .8rem/1.4 var(--mono); color: var(--muted); }
 
-footer { margin-top: 28px; font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
+/* ---------- detail sheet ---------- */
+.scrim { position: fixed; inset: 0; background: rgb(5 10 15 / .45); z-index: 20; opacity: 0; transition: opacity .2s; }
+.scrim.on { opacity: 1; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-width: 560px; margin: 0 auto;
+  background: var(--sheet); border-radius: 22px 22px 0 0; padding: 10px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(105%); transition: transform .28s cubic-bezier(.3,.7,.2,1);
+  box-shadow: 0 -10px 40px rgb(0 0 0 / .18);
+}
+.sheet.on { transform: none; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--rule); margin: 0 auto 14px; }
+.sheet .sw { width: 100%; height: 6px; border-radius: 3px; background: var(--edge); margin-bottom: 14px; }
+.sheet h3 { margin: 0 0 4px; font: 800 1.45rem/1.15 var(--display); font-variation-settings: "wdth" 112; color: var(--ink); }
+.sheet .when { font: 500 .95rem/1.4 var(--mono); color: var(--muted); margin-bottom: 16px; }
+.sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0 0 18px; }
+.sheet dt { font: 600 .68rem/1.6 var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.sheet dd { margin: 0; font-size: 1rem; }
+.sheet .acts { display: flex; gap: 8px; }
+.btn {
+  flex: 1; height: 46px; border-radius: 13px; border: 1px solid var(--rule); background: var(--paper);
+  font-weight: 600; font-size: .92rem;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
-@media (min-width: 560px) { .day .dd { font-size: 1.3rem; } }
+/* ---------- footer ---------- */
+footer { margin-top: 32px; display: grid; gap: 14px; }
+.cal {
+  display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--sheet); border: 1px solid var(--rule);
+}
+.cal b { font: 700 1rem/1.2 var(--display); font-variation-settings: "wdth" 110; }
+.cal p { margin: 0; font-size: .86rem; color: var(--muted); max-width: 60ch; }
+.cal .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cal .btn { flex: 1 1 10rem; display: inline-grid; place-items: center; text-decoration: none; color: var(--ink); }
+.fine { font: 500 .74rem/1.5 var(--mono); color: var(--muted); }
+
+@media (min-width: 760px) {
+  :root { --hours-w: 3rem; }
+  .blk .bt { font-size: .82rem; font-variation-settings: "wdth" 90; }
+  .blk .br { font-size: .72rem; }
+  .agenda { max-width: 640px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
 @media (prefers-reduced-motion: no-preference) {
-  .list > * { animation: rise .22s ease-out both; }
-  @keyframes rise { from { transform: translateY(4px); opacity: .4; } }
+  .anim > * { animation: up .28s cubic-bezier(.3,.7,.2,1) both; }
+  .anim > *:nth-child(2) { animation-delay: .03s; } .anim > *:nth-child(3) { animation-delay: .06s; }
+  .anim > *:nth-child(4) { animation-delay: .09s; } .anim > *:nth-child(5) { animation-delay: .12s; }
+  .anim > *:nth-child(n+6) { animation-delay: .15s; }
+  @keyframes up { from { opacity: .3; transform: translateY(6px); } }
 }
 </style>
 
-<div class="wrap">
+<div class="wrap" id="app">
   <header class="top">
-    <div class="brand">
-      <h1>MA1 Ingé ind.</h1>
-      <span class="opt" id="opt"></span>
+    <div class="row1">
+      <div class="ident">
+        <div class="eyebrow">HEH · MA1 Ingé. industriel</div>
+        <h1 id="opt">IA &amp; Big Data</h1>
+      </div>
+      <div class="seg" id="seg" role="group" aria-label="Vue">
+        <span class="knob"></span>
+        <button id="vJour" data-v="jour">Jour</button>
+        <button id="vSem" data-v="semaine">Semaine</button>
+      </div>
     </div>
-    <div class="weekbar">
-      <button class="nav" id="prev" aria-label="Semaine précédente">‹</button>
-      <div class="lbl"><b id="wk"></b><span id="wkr"></span></div>
-      <button class="nav" id="next" aria-label="Semaine suivante">›</button>
-      <button class="today-btn" id="today">Auj.</button>
+    <div class="row2">
+      <button class="nav" id="prev" aria-label="Précédent"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="wk"><span class="num" id="wnum"></span><span class="rng" id="wrng"></span></div>
+      <button class="nav" id="next" aria-label="Suivant"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="todaybtn" id="today">Aujourd'hui</button>
     </div>
-    <nav class="days" id="days" aria-label="Jours"></nav>
+    <nav class="days" id="days" aria-label="Jours de la semaine"></nav>
   </header>
 
-  <div class="dayhead"><h2 id="dtitle"></h2><span id="dsum"></span></div>
-  <main class="list" id="list"></main>
+  <main id="main"></main>
 
   <footer>
-    <span id="maj"></span>
-    <span>Source : HEH Planning, cours tagués pour ton option + cours sans option (St Éloi, projet entrepreneurial…).</span>
+    <section class="cal" id="cal">
+      <b>Dans ton agenda</b>
+      <p>Abonne-toi au calendrier : les cours apparaissent dans Google Agenda ou Calendrier iPhone et suivent les changements (mise à jour par l'agenda toutes les 12 à 24 h).</p>
+      <div class="acts">
+        <a class="btn" id="webcal" href="#">S'abonner sur iPhone</a>
+        <button class="btn" id="copy">Copier le lien (Google)</button>
+      </div>
+    </section>
+    <div class="fine" id="maj"></div>
   </footer>
 </div>
 
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t" hidden></div>
+
 <script>
-const DATA = {"formation": "MA1 Ingénieur industriel", "option": "PASS Info IA et Big Data", "maj": "02/10/2026 12h14", "cours": [{"date": "2026-09-14", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-14", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-16", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["1/37"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-09-16", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-17", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-17", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-18", "debut": "13:30", "fin": "15:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-21", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-21", "debut": "13:30", "fin": "15:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["2/09A"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-09-21", "debut": "15:30", "fin": "17:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": [], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-22", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-09-22", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["1/36A"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09C"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-25", "debut": "13:30", "fin": "15:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["1/29"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-29", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-09-29", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-30", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-30", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09C"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-02", "debut": "14:00", "fin": "17:00", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-10-05", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-05", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-10-06", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-06", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-07", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-07", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-08", "debut": "08:15", "fin": "10:15", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-09", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-12", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-12", "debut": "12:30", "fin": "13:30", "matiere": "Info Mobilité", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-12", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "10:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-14", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-16", "debut": "10:30", "fin": "12:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/37"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-16", "debut": "14:00", "fin": "17:00", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "13:30", "fin": "14:00", "matiere": "LAN", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-20", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/23", "1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-20", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-21", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-30", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-11-03", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-03", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-04", "debut": "10:30", "fin": "13:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-04", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/28"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-05", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-05", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-06", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-09", "debut": "09:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-10", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-11-10", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-12", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-12", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-12", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/28"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "13:30", "fin": "15:30", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-11-17", "debut": "08:30", "fin": "17:00", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Naizy", "Lenaerts"], "salles": ["2/SA"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-18", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-11-19", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-19", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-11-19", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-20", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["1/25"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-11-20", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09A"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-11-20", "debut": "13:30", "fin": "16:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-23", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-23", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-24", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-24", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-11-25", "debut": "08:15", "fin": "11:15", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-25", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-26", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-26", "debut": "10:30", "fin": "12:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-26", "debut": "13:30", "fin": "16:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "13:30", "fin": "16:30", "matiere": "St Eloi", "type": "", "profs": ["Arnaud", "Avaert", "Besanger", "Bienfait", "Delchevalerie", "Chardome", "Coornaert", "Cremer", "Deckers", "Deprez", "Desmet", "Dubray", "Dupuis", "Froment", "Gryspeert", "Hubert", "Isidoro", "Lebailly", "Lenoir", "Leonet", "Maillez", "Malaise", "Mandoux", "Maslowski", "Mercier", "Miller", "Naizy", "Paulet", "Petein", "Peto", "Quevy", "Quittelier", "Remacle", "Ridelaire", "Sottiaux", "Souris", "Tricarico", "VanDamme", "Lenaerts", "Baras", "Pietrzak", "Scopel", "Timmermans", "Derville", "Delannay", "Taira", "Carlier", "Claus", "Lerat", "Michiels", "Vassart", "Fanchon", "Pietka", "Mathot", "Depreter", "Bouillon", "D'Hondt", "Dambrin", "Szczepanski", "Branders", "Brogniaux", "Roland", "Delmotte", "Petit", "Huybrechts", "Decrème", "Gaussin"], "salles": [], "note": "", "couleur": "#808080", "etiquette": "sans", "annule": false}, {"date": "2026-11-30", "debut": "08:00", "fin": "11:00", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-30", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-01", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-12-01", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-03", "debut": "08:15", "fin": "12:30", "matiere": "Intercultural communication", "type": "", "profs": ["Parmentier"], "salles": ["2/09A"], "note": "", "couleur": "#A0D0D8", "etiquette": "sans", "annule": false}, {"date": "2026-12-03", "debut": "13:30", "fin": "15:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-04", "debut": "08:30", "fin": "12:30", "matiere": "Intercultural communication", "type": "", "profs": ["Parmentier"], "salles": ["2/09A"], "note": "", "couleur": "#A0D0D8", "etiquette": "", "annule": false}, {"date": "2026-12-04", "debut": "13:30", "fin": "15:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": [], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-07", "debut": "08:00", "fin": "11:00", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-07", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "10:30", "fin": "12:30", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["2/09C"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": [], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-10", "debut": "08:15", "fin": "10:15", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-12-10", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-11", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/29"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-12-14", "debut": "08:30", "fin": "12:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": [], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-14", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-12-15", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-12-15", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "10:30", "fin": "12:30", "matiere": "Langues", "type": "", "profs": [], "salles": ["1/32"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-17", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-17", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-18", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["2/09C"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-18", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}]};
-const JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven"];
-const JOURS_L = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DATA = {"formation": "MA1 Ingénieur industriel", "option": "PASS Info IA et Big Data", "maj": "02/10/2026 12h20", "cours": [{"date": "2026-09-14", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-14", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-16", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["1/37"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-09-16", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-17", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-17", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-18", "debut": "13:30", "fin": "15:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-21", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-21", "debut": "13:30", "fin": "15:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["2/09A"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-09-21", "debut": "15:30", "fin": "17:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": [], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-22", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-09-22", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["1/36A"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-23", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09C"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-09-24", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-09-25", "debut": "13:30", "fin": "15:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["1/29"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-28", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-29", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-09-29", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-09-30", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-09-30", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09C"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-01", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-02", "debut": "14:00", "fin": "17:00", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-10-05", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-05", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-10-06", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-06", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-07", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-07", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-08", "debut": "08:15", "fin": "10:15", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-09", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-12", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-12", "debut": "12:30", "fin": "13:30", "matiere": "Info Mobilité", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-12", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "10:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-13", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-14", "debut": "08:15", "fin": "10:15", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-10-15", "debut": "13:30", "fin": "16:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-10-16", "debut": "10:30", "fin": "12:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/37"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-10-16", "debut": "14:00", "fin": "17:00", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-19", "debut": "13:30", "fin": "14:00", "matiere": "LAN", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-10-20", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/23", "1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-10-20", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-10-21", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-10-30", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-11-03", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-03", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-04", "debut": "10:30", "fin": "13:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-04", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/28"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-05", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-05", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-06", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-09", "debut": "09:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-10", "debut": "10:30", "fin": "12:30", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-11-10", "debut": "13:30", "fin": "17:30", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Lenaerts"], "salles": ["1/32", "1/36A", "1/36B", "1/37"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-12", "debut": "08:15", "fin": "10:15", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/32"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-12", "debut": "10:30", "fin": "12:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-12", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/28"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-13", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "08:15", "fin": "10:15", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-16", "debut": "13:30", "fin": "15:30", "matiere": "Langues", "type": "", "profs": ["Remacle"], "salles": ["2/SA"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-11-17", "debut": "08:30", "fin": "17:00", "matiere": "Projet entrepreneurial", "type": "Cours", "profs": ["Naizy", "Lenaerts"], "salles": ["2/SA"], "note": "", "couleur": "#20B6D2", "etiquette": "sans", "annule": false}, {"date": "2026-11-18", "debut": "13:30", "fin": "17:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/SA"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-11-19", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-19", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-11-19", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-20", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["1/25"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-11-20", "debut": "10:30", "fin": "12:30", "matiere": "L'entreprise:Cont.Struc & enje", "type": "", "profs": ["Baras"], "salles": ["2/09A"], "note": "", "couleur": "#808080", "etiquette": "pass", "annule": false}, {"date": "2026-11-20", "debut": "13:30", "fin": "16:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-23", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-23", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-11-24", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-24", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-11-25", "debut": "08:15", "fin": "11:15", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-11-25", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-11-26", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-11-26", "debut": "10:30", "fin": "12:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/36A"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-11-26", "debut": "13:30", "fin": "16:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-27", "debut": "13:30", "fin": "16:30", "matiere": "St Eloi", "type": "", "profs": ["Arnaud", "Avaert", "Besanger", "Bienfait", "Delchevalerie", "Chardome", "Coornaert", "Cremer", "Deckers", "Deprez", "Desmet", "Dubray", "Dupuis", "Froment", "Gryspeert", "Hubert", "Isidoro", "Lebailly", "Lenoir", "Leonet", "Maillez", "Malaise", "Mandoux", "Maslowski", "Mercier", "Miller", "Naizy", "Paulet", "Petein", "Peto", "Quevy", "Quittelier", "Remacle", "Ridelaire", "Sottiaux", "Souris", "Tricarico", "VanDamme", "Lenaerts", "Baras", "Pietrzak", "Scopel", "Timmermans", "Derville", "Delannay", "Taira", "Carlier", "Claus", "Lerat", "Michiels", "Vassart", "Fanchon", "Pietka", "Mathot", "Depreter", "Bouillon", "D'Hondt", "Dambrin", "Szczepanski", "Branders", "Brogniaux", "Roland", "Delmotte", "Petit", "Huybrechts", "Decrème", "Gaussin"], "salles": [], "note": "", "couleur": "#808080", "etiquette": "sans", "annule": false}, {"date": "2026-11-30", "debut": "08:00", "fin": "11:00", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-11-30", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-01", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-12-01", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/28"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-02", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-03", "debut": "08:15", "fin": "12:30", "matiere": "Intercultural communication", "type": "", "profs": ["Parmentier"], "salles": ["2/09A"], "note": "", "couleur": "#A0D0D8", "etiquette": "sans", "annule": false}, {"date": "2026-12-03", "debut": "13:30", "fin": "15:30", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-04", "debut": "08:30", "fin": "12:30", "matiere": "Intercultural communication", "type": "", "profs": ["Parmentier"], "salles": ["2/09A"], "note": "", "couleur": "#A0D0D8", "etiquette": "", "annule": false}, {"date": "2026-12-04", "debut": "13:30", "fin": "15:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": [], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-07", "debut": "08:00", "fin": "11:00", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-07", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": [], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "10:30", "fin": "12:30", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["2/09C"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-08", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-09", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": [], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-10", "debut": "08:15", "fin": "10:15", "matiere": "Cybersécurité 1", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#808080", "etiquette": "", "annule": false}, {"date": "2026-12-10", "debut": "13:30", "fin": "16:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-11", "debut": "13:30", "fin": "17:30", "matiere": "Chimie", "type": "", "profs": ["Deprez"], "salles": ["1/29"], "note": "", "couleur": "#80FFFF", "etiquette": "pass", "annule": false}, {"date": "2026-12-14", "debut": "08:30", "fin": "12:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": [], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-14", "debut": "13:30", "fin": "16:30", "matiere": "Projet, bureau d'études", "type": "", "profs": ["Cremer", "Lerat"], "salles": ["1/27"], "note": "", "couleur": "#5C782A", "etiquette": "", "annule": false}, {"date": "2026-12-15", "debut": "09:30", "fin": "12:30", "matiere": "Rech opérationnelle", "type": "", "profs": ["Hubert"], "salles": ["1/25"], "note": "", "couleur": "#5500F8", "etiquette": "", "annule": false}, {"date": "2026-12-15", "debut": "13:30", "fin": "17:30", "matiere": "Informatique embarquée", "type": "", "profs": ["Maillez"], "salles": ["1/26"], "note": "", "couleur": "#F80379", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "08:15", "fin": "10:15", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "10:30", "fin": "12:30", "matiere": "Langues", "type": "", "profs": [], "salles": ["1/32"], "note": "", "couleur": "#FFFFFF", "etiquette": "", "annule": false}, {"date": "2026-12-16", "debut": "13:30", "fin": "17:30", "matiere": "Infrastructures centralisées", "type": "", "profs": ["Szczepanski"], "salles": ["1/27"], "note": "", "couleur": "#43B061", "etiquette": "", "annule": false}, {"date": "2026-12-17", "debut": "08:15", "fin": "10:15", "matiere": "Bases de données", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#008080", "etiquette": "", "annule": false}, {"date": "2026-12-17", "debut": "10:30", "fin": "12:30", "matiere": "Programmation scientifique", "type": "", "profs": ["Lerat"], "salles": ["1/28"], "note": "", "couleur": "#F4DAD7", "etiquette": "", "annule": false}, {"date": "2026-12-18", "debut": "08:15", "fin": "10:15", "matiere": "Project management", "type": "", "profs": ["Bouillon"], "salles": ["2/09C"], "note": "", "couleur": "#FCC8FF", "etiquette": "", "annule": false}, {"date": "2026-12-18", "debut": "10:30", "fin": "12:30", "matiere": "Business intelligence", "type": "", "profs": ["Cremer"], "salles": ["1/27"], "note": "", "couleur": "#E73A1F", "etiquette": "", "annule": false}]};
+
+// Noms de l'école parfois tronqués : versions lisibles
+const NOMS = {
+  "L'entreprise:Cont.Struc & enje": "L'entreprise : contexte, structure & enjeux",
+  "Rech opérationnelle": "Recherche opérationnelle",
+  "Projet, bureau d'études": "Projet · bureau d'études",
+  "Syst. d'expl.": "Systèmes d'exploitation",
+};
+const nom = m => NOMS[m] || m;
+// Vue semaine sur téléphone : colonnes étroites, noms courts
+const COURTS = {
+  "Bases de données": "BD", "Business intelligence": "BI", "Cybersécurité 1": "Cyber",
+  "Informatique embarquée": "Info emb.", "Programmation scientifique": "Prog. sci.",
+  "Rech opérationnelle": "RO", "Infrastructures centralisées": "Infra", "Projet entrepreneurial": "Projet entr.",
+  "L'entreprise:Cont.Struc & enje": "Entre­prise", "Project management": "Project mgmt",
+  "Projet, bureau d'études": "Bureau d'études", "Intercultural communication": "Intercult.",
+  "Info Mobilité": "Mobilité", "St Eloi": "St Éloi", "Syst. d'expl.": "OS",
+};
+const court = m => COURTS[m] || (m.length > 12
+  ? m.split(/[\s,:'.]+/).filter(w => w.length > 2).map(w => w[0].toUpperCase()).join("") || m
+  : m);
+
+const JC = ["Lun", "Mar", "Mer", "Jeu", "Ven"];
+const JL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 const $ = id => document.getElementById(id);
-
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const monday = d => addDays(d, -((d.getDay() + 6) % 7));
+const add = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const monday = d => add(d, -((d.getDay() + 6) % 7));
 const mins = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const dur = m => { const h = Math.floor(m / 60), r = m % 60; return h ? `${h}h${r ? String(r).padStart(2, "0") : ""}` : `${r} min`; };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
 
+// ---- data ----
 const byDate = {};
-for (const c of DATA.cours) (byDate[c.date] ||= []).push(c);
+DATA.cours.forEach((c, i) => { c.id = i; (byDate[c.date] ||= []).push(c); });
 const dates = Object.keys(byDate).sort();
 const firstMon = monday(parse(dates[0]));
 const lastMon = monday(parse(dates[dates.length - 1]));
 const weekNo = m => Math.round((m - firstMon) / 6048e5) + 1;
+const dayMin = Math.floor(Math.min(...DATA.cours.map(c => mins(c.debut))) / 60) * 60;
+const dayMax = Math.ceil(Math.max(...DATA.cours.map(c => mins(c.fin))) / 60) * 60;
 
-// Stable hue per course name
-const hue = name => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % 360; };
+// One hue per course, most frequent first, spread around the wheel
+const HUES = [262, 28, 158, 318, 85, 205, 352, 128, 235, 55, 290, 182, 10, 105];
+const freq = {};
+DATA.cours.forEach(c => { freq[c.matiere] = (freq[c.matiere] || 0) + 1; });
+const HUE = {};
+Object.keys(freq).sort((a, b) => freq[b] - freq[a]).forEach((m, i) => { HUE[m] = HUES[i % HUES.length]; });
 
-const now = new Date();
-let selDate;
-function initialDate() {
-  // Today if weekday; otherwise next Monday. Clamp to the published range.
+// ---- state ----
+let now = new Date();
+const nowMin = () => now.getHours() * 60 + now.getMinutes();
+const todayIso = () => iso(now);
+function defaultDate() {
   let d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (d.getDay() === 6) d = addDays(d, 2);
-  if (d.getDay() === 0) d = addDays(d, 1);
-  // After today's last class, jump to the next day with classes
+  if (d.getDay() === 6) d = add(d, 2);
+  if (d.getDay() === 0) d = add(d, 1);
   const t = byDate[iso(d)];
-  if (iso(d) === iso(now) && t && mins(t[t.length - 1].fin) <= now.getHours() * 60 + now.getMinutes()) {
-    const nxt = dates.find(x => x > iso(d)); if (nxt) d = parse(nxt);
+  if (iso(d) === todayIso() && (!t || mins(t[t.length - 1].fin) <= nowMin())) {
+    const nxt = dates.find(x => x > iso(d));
+    if (nxt && monday(parse(nxt)) <= add(monday(d), 7)) d = parse(nxt);
   }
   if (d < firstMon) d = parse(dates[0]);
-  if (d > addDays(lastMon, 4)) d = parse(dates[dates.length - 1]);
+  if (d > add(lastMon, 4)) d = parse(dates[dates.length - 1]);
   return d;
 }
-try { const s = sessionStorage.getItem("sel"); if (s) selDate = parse(s); } catch (e) {}
-if (!selDate || isNaN(selDate)) selDate = initialDate();
+let sel = defaultDate();
+let view = store.get("vue") || (matchMedia("(min-width: 900px)").matches ? "semaine" : "jour");
 
-function fmtDur(m) { const h = Math.floor(m / 60), r = m % 60; return h ? `${h}h${r ? String(r).padStart(2, "0") : ""}` : `${r} min`; }
+// ---- render ----
+function render(animate = true) {
+  const app = $("app");
+  app.className = "wrap v-" + view;
+  $("seg").dataset.v = view;
+  $("vJour").setAttribute("aria-pressed", view === "jour");
+  $("vSem").setAttribute("aria-pressed", view === "semaine");
 
-function render() {
-  try { sessionStorage.setItem("sel", iso(selDate)); } catch (e) {}
-  const mon = monday(selDate);
-  const fri = addDays(mon, 4);
-  $("opt").textContent = DATA.option;
-  $("wk").textContent = `Semaine ${weekNo(mon)}`;
-  $("wkr").textContent = `${mon.getDate()} ${mon.getMonth() !== fri.getMonth() ? MOIS[mon.getMonth()] + " " : ""}– ${fri.getDate()} ${MOIS[fri.getMonth()]}`;
-  $("prev").disabled = mon <= firstMon;
-  $("next").disabled = mon >= lastMon;
+  const mon = monday(sel), fri = add(mon, 4);
+  $("wnum").textContent = "S" + weekNo(mon);
+  $("wrng").textContent = mon.getMonth() === fri.getMonth()
+    ? `${mon.getDate()} – ${fri.getDate()} ${MOIS[fri.getMonth()]}`
+    : `${mon.getDate()} ${MOIS[mon.getMonth()]} – ${fri.getDate()} ${MOIS[fri.getMonth()]}`;
+  if (view === "jour") {
+    $("prev").disabled = iso(sel) <= dates[0] && sel <= firstMon;
+    $("next").disabled = sel >= add(lastMon, 4);
+  } else {
+    $("prev").disabled = mon <= firstMon;
+    $("next").disabled = mon >= lastMon;
+  }
+  $("prev").setAttribute("aria-label", view === "jour" ? "Jour précédent" : "Semaine précédente");
+  $("next").setAttribute("aria-label", view === "jour" ? "Jour suivant" : "Semaine suivante");
+  const onToday = view === "jour" ? iso(sel) === iso(defaultDate()) : iso(mon) === iso(monday(defaultDate()));
+  $("today").dataset.on = onToday ? "1" : "0";
 
-  const days = $("days"); days.innerHTML = "";
+  // day strip / week column headers
+  const days = $("days");
+  days.innerHTML = `<span class="spacer"></span>`;
   for (let i = 0; i < 5; i++) {
-    const d = addDays(mon, i), k = iso(d), n = (byDate[k] || []).length;
+    const d = add(mon, i), k = iso(d), cs = byDate[k] || [];
     const b = document.createElement("button");
-    b.className = "day" + (n ? "" : " empty") + (k === iso(now) ? " is-today" : "") + (k === iso(selDate) ? " sel" : "");
-    b.setAttribute("aria-pressed", k === iso(selDate));
-    b.setAttribute("aria-label", `${JOURS_L[i]} ${d.getDate()}, ${n} cours`);
-    b.innerHTML = `<span class="dn">${JOURS[i]}</span><span class="dd">${d.getDate()}</span><span class="dots">${"<i></i>".repeat(Math.min(n, 4))}</span>`;
-    b.onclick = () => { selDate = d; render(); };
+    b.className = "day" + (cs.length ? "" : " off") + (k === todayIso() ? " today" : "") + (k === iso(sel) ? " sel" : "");
+    b.setAttribute("aria-label", `${JL[i]} ${d.getDate()} ${MOIS[d.getMonth()]}, ${cs.length} cours`);
+    if (view === "jour") b.setAttribute("aria-pressed", k === iso(sel));
+    b.innerHTML = `<span class="dn">${JC[i]}</span><span class="dd">${d.getDate()}</span>` +
+      `<span class="bar">${cs.slice(0, 5).map(c => `<i class="c" style="--h:${HUE[c.matiere]}"></i>`).join("")}</span>`;
+    b.onclick = () => { sel = d; view = "jour"; store.set("vue", view); render(); };
     days.append(b);
   }
 
-  const k = iso(selDate), list = $("list"), cs = byDate[k] || [];
-  const dow = (selDate.getDay() + 6) % 7;
-  $("dtitle").textContent = (k === iso(now) ? "Aujourd'hui" : k === iso(addDays(now, 1)) ? "Demain" : JOURS_L[dow]) + ` ${selDate.getDate()} ${MOIS[selDate.getMonth()]}`;
-  const total = cs.reduce((s, c) => s + mins(c.fin) - mins(c.debut), 0);
-  $("dsum").textContent = cs.length ? `${cs[0].debut}–${cs[cs.length - 1].fin} · ${fmtDur(total)} de cours` : "";
-  list.innerHTML = "";
-  if (!cs.length) {
-    list.innerHTML = `<div class="empty-day"><b>Pas cours</b>Rien de publié pour ce jour.</div>`;
-    return;
-  }
-  const nowM = now.getHours() * 60 + now.getMinutes(), isToday = k === iso(now);
-  cs.forEach((c, i) => {
-    if (i > 0) {
-      const g = mins(c.debut) - mins(cs[i - 1].fin);
-      if (g >= 30) { const p = document.createElement("div"); p.className = "gap"; p.textContent = `pause ${fmtDur(g)}`; list.append(p); }
-    }
-    const el = document.createElement("article");
-    const live = isToday && nowM >= mins(c.debut) && nowM < mins(c.fin);
-    const past = isToday && nowM >= mins(c.fin);
-    el.className = "card" + (live ? " now" : "") + (past ? " past" : "");
-    el.style.setProperty("--h", hue(c.matiere));
-    const rooms = c.salles.length
-      ? c.salles.map(s => `<span class="room">${esc(s)}</span>`).join("")
-      : `<span class="room none">salle ?</span>`;
-    el.innerHTML = `
-      <div class="time">${c.debut}<small>${c.fin}</small><span class="dur">${fmtDur(mins(c.fin) - mins(c.debut))}</span></div>
-      <div class="info">
-        ${live ? `<div class="live">● En cours</div>` : ""}
-        <h3>${esc(c.matiere)}</h3>
-        <div class="meta">${rooms}<span>${esc(c.profs.join(", "))}</span>
-          ${c.type ? `<span class="tag">${esc(c.type)}</span>` : ""}
-          ${c.etiquette === "pass" ? `<span class="tag opt">Passerelle</span>` : c.etiquette === "sans" ? `<span class="tag">Sans option</span>` : ""}
-        </div>
-      </div>
-      ${c.note ? `<div class="note">${esc(c.note)}</div>` : ""}`;
-    list.append(el);
-  });
+  const main = $("main");
+  main.innerHTML = view === "jour" ? dayHTML() : weekHTML();
+  const animEl = main.querySelector(".agenda, .grid");
+  if (animEl && animate) animEl.classList.add("anim");
+  main.querySelectorAll("[data-id]").forEach(el => { el.onclick = () => openSheet(DATA.cours[+el.dataset.id]); });
 }
-function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
 
-$("prev").onclick = () => { selDate = addDays(monday(selDate), -7); render(); };
-$("next").onclick = () => { selDate = addDays(monday(selDate), 7); render(); };
-$("today").onclick = () => { selDate = initialDate(); render(); };
-// Swipe left/right to change day
-let sx = null;
-$("list").addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, { passive: true });
-$("list").addEventListener("touchend", e => {
-  if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; sx = null;
-  if (Math.abs(dx) < 60) return;
-  let d = addDays(selDate, dx < 0 ? 1 : -1);
-  if (d.getDay() === 6) d = addDays(d, 2); if (d.getDay() === 0) d = addDays(d, -2);
-  if (d >= firstMon && d <= addDays(lastMon, 4)) { selDate = d; render(); }
+function dayHTML() {
+  const k = iso(sel), cs = byDate[k] || [], isToday = k === todayIso(), nm = nowMin();
+  const dow = (sel.getDay() + 6) % 7;
+  const label = isToday ? "Aujourd'hui" : k === iso(add(now, 1)) ? "Demain" : JL[dow];
+  const total = cs.reduce((s, c) => s + mins(c.fin) - mins(c.debut), 0);
+  let h = `<div class="dayhead"><h2>${label} <span style="color:var(--muted)">${sel.getDate()} ${MOIS[sel.getMonth()]}</span></h2>` +
+    (cs.length ? `<span class="sum">${cs[0].debut} → ${cs[cs.length - 1].fin} · ${dur(total)} de cours</span>` : "") + `</div>`;
+  if (!cs.length) {
+    return h + `<div class="empty"><b>Pas cours</b>Rien de prévu ce jour-là.</div>`;
+  }
+  if (isToday) {
+    const live = cs.find(c => nm >= mins(c.debut) && nm < mins(c.fin));
+    const next = cs.find(c => mins(c.debut) > nm);
+    if (live) h += `<div class="banner"><span class="pulse"></span><span><b>${esc(nom(live.matiere))}</b> jusqu'à ${live.fin} · reste ${dur(mins(live.fin) - nm)}</span></div>`;
+    else if (next) h += `<div class="banner"><span class="pulse"></span><span>Prochain : <b>${esc(nom(next.matiere))}</b> dans ${dur(mins(next.debut) - nm)}${next.salles.length ? " · " + esc(next.salles.join(", ")) : ""}</span></div>`;
+    else h += `<div class="banner"><span class="pulse"></span><span>Fini pour aujourd'hui.</span></div>`;
+  }
+  h += `<div class="agenda">`;
+  cs.forEach((c, i) => {
+    if (i) {
+      const g = mins(c.debut) - mins(cs[i - 1].fin);
+      if (g >= 30) h += `<div class="pause">${g >= 60 && mins(cs[i - 1].fin) <= 12 * 60 + 45 && mins(c.debut) >= 12 * 60 ? "midi" : "pause"} · ${dur(g)}</div>`;
+    }
+    const live = isToday && nm >= mins(c.debut) && nm < mins(c.fin);
+    const done = isToday && nm >= mins(c.fin);
+    const rooms = c.salles.length ? c.salles.map(s => `<span class="plate">${esc(s)}</span>`).join("") : `<span class="plate none">salle ?</span>`;
+    const chip = c.etiquette === "pass" ? `<span class="chip pass">Passerelle</span>` : c.etiquette === "sans" ? `<span class="chip">Sans option</span>` : "";
+    h += `<button class="card c${live ? " live" : ""}${done ? " done" : ""}" style="--h:${HUE[c.matiere]}" data-id="${c.id}">
+      <div class="t"><b>${c.debut}</b><span>${c.fin}</span><em>${live ? "EN COURS" : dur(mins(c.fin) - mins(c.debut))}</em></div>
+      <div><h3>${esc(nom(c.matiere))}</h3>
+        <div class="meta">${rooms}<span>${esc(c.profs.join(", "))}</span>${c.type ? `<span class="chip">${esc(c.type)}</span>` : ""}${chip}</div>
+      </div>
+      ${c.note ? `<div class="note">${esc(c.note)}</div>` : ""}
+    </button>`;
+  });
+  return h + `</div>`;
+}
+
+function weekHTML() {
+  const mon = monday(sel);
+  const wide = matchMedia("(min-width: 760px)").matches;
+  const hh = wide ? 64 : 58;   // px per hour
+  const k = hh / 60, H = (dayMax - dayMin) * k;
+  const off = `${(-(dayMin % 60)) * k}px`;
+  let total = 0, n = 0;
+  let h = `<div class="grid" style="--hh:${hh}px;--off:${off}"><div class="hours" style="height:${H}px">`;
+  for (let m = dayMin; m <= dayMax; m += 60) {
+    if (m < dayMax) h += `<span style="top:${(m - dayMin) * k}px${m === dayMin ? ";transform:none" : ""}">${m / 60}h</span>`;
+  }
+  h += `</div>`;
+  for (let i = 0; i < 5; i++) {
+    const d = add(mon, i), key = iso(d), cs = byDate[key] || [], isToday = key === todayIso();
+    h += `<div class="col${isToday ? " today" : ""}" style="height:${H}px">`;
+    // overlap lanes
+    const lanes = [], laneOf = new Map();
+    let cluster = [], clusterEnd = -1;
+    const flush = () => { const L = Math.max(...cluster.map(c => laneOf.get(c))) + 1; cluster.forEach(c => c._lanes = L); cluster = []; lanes.length = 0; };
+    for (const c of cs) {
+      const s = mins(c.debut), e = mins(c.fin);
+      if (cluster.length && s >= clusterEnd) flush();
+      let l = lanes.findIndex(end => end <= s);
+      if (l < 0) { l = lanes.length; lanes.push(e); } else lanes[l] = e;
+      laneOf.set(c, l); cluster.push(c); clusterEnd = Math.max(clusterEnd, e);
+    }
+    if (cluster.length) flush();
+    for (const c of cs) {
+      const s = mins(c.debut), e = mins(c.fin), ht = (e - s) * k - 3;
+      total += e - s; n++;
+      const L = c._lanes, l = laneOf.get(c);
+      const pos = L > 1 ? `left:calc(${(l / L) * 100}% + 2px);right:auto;width:calc(${100 / L}% - 4px);` : "";
+      const done = isToday && nowMin() >= e;
+      h += `<button class="blk c${done ? " done" : ""}" data-id="${c.id}" style="--h:${HUE[c.matiere]};top:${(s - dayMin) * k + 1.5}px;height:${ht}px;${pos}" aria-label="${esc(nom(c.matiere))}, ${JL[i]} ${c.debut} à ${c.fin}${c.salles.length ? ", salle " + esc(c.salles.join(", ")) : ""}">
+        ${ht > 44 ? `<span class="bh">${c.debut}</span>` : ""}
+        <span class="bt">${wide ? esc(nom(c.matiere)) : esc(court(c.matiere))}</span>
+        ${ht > 70 && c.salles.length ? `<span class="br">${esc(c.salles.join(" "))}</span>` : ""}
+      </button>`;
+    }
+    if (isToday) {
+      const nm = nowMin();
+      if (nm > dayMin && nm < dayMax) h += `<div class="nowline" style="top:${(nm - dayMin) * k}px"></div>`;
+    }
+    h += `</div>`;
+  }
+  h += `</div>`;
+  if (!n) h = `<div class="grid"><div class="weekempty empty"><b>Semaine sans cours</b>Rien de publié pour cette semaine.</div></div>`;
+  else h += `<p class="wsum">${n} séances · ${dur(total)} de cours cette semaine</p>`;
+  return h;
+}
+
+// ---- detail sheet ----
+let lastFocus = null;
+function openSheet(c) {
+  lastFocus = document.activeElement;
+  const d = parse(c.date), dow = (d.getDay() + 6) % 7;
+  const sh = $("sheet");
+  sh.innerHTML = `<div class="grab"></div><div class="sw c" style="--h:${HUE[c.matiere]}"></div>
+    <h3 id="sh-t">${esc(nom(c.matiere))}</h3>
+    <div class="when">${JL[dow]} ${d.getDate()} ${MOIS[d.getMonth()]} · ${c.debut} → ${c.fin} (${dur(mins(c.fin) - mins(c.debut))})</div>
+    <dl>
+      <dt>Salle</dt><dd>${c.salles.length ? c.salles.map(s => `<span class="plate">${esc(s)}</span>`).join(" ") : "Pas indiquée"}</dd>
+      <dt>Prof</dt><dd>${esc(c.profs.join(", ") || "—")}</dd>
+      ${c.type ? `<dt>Type</dt><dd>${esc(c.type)}</dd>` : ""}
+      ${c.note ? `<dt>Note</dt><dd>${esc(c.note)}</dd>` : ""}
+      ${c.etiquette === "pass" ? `<dt>Public</dt><dd>Passerelles uniquement</dd>` : c.etiquette === "sans" ? `<dt>Public</dt><dd>Aucune option indiquée par l'école</dd>` : ""}
+    </dl>
+    <div class="acts">${view === "semaine" ? `<button class="btn primary" id="sh-day">Voir la journée</button>` : ""}<button class="btn" id="sh-close">Fermer</button></div>`;
+  $("scrim").hidden = false; sh.hidden = false;
+  requestAnimationFrame(() => { $("scrim").classList.add("on"); sh.classList.add("on"); });
+  $("sh-close").onclick = closeSheet;
+  if ($("sh-day")) $("sh-day").onclick = () => { closeSheet(); sel = d; view = "jour"; store.set("vue", view); render(); };
+  $("sh-close").focus();
+}
+function closeSheet() {
+  const sh = $("sheet");
+  $("scrim").classList.remove("on"); sh.classList.remove("on");
+  setTimeout(() => { $("scrim").hidden = true; sh.hidden = true; }, 280);
+  if (lastFocus) lastFocus.focus({ preventScroll: true });
+}
+$("scrim").onclick = closeSheet;
+
+// ---- controls ----
+function step(dir) {
+  if (view === "semaine") { sel = add(monday(sel), 7 * dir); }
+  else {
+    let d = add(sel, dir);
+    if (d.getDay() === 6) d = add(d, dir > 0 ? 2 : -1);
+    if (d.getDay() === 0) d = add(d, dir > 0 ? 1 : -2);
+    sel = d;
+  }
+  if (sel < firstMon) sel = firstMon;
+  if (sel > add(lastMon, 4)) sel = add(lastMon, 4);
+  render();
+}
+$("prev").onclick = () => step(-1);
+$("next").onclick = () => step(1);
+$("today").onclick = () => { now = new Date(); sel = defaultDate(); render(); };
+$("vJour").onclick = () => { view = "jour"; store.set("vue", view); render(); };
+$("vSem").onclick = () => { view = "semaine"; store.set("vue", view); render(); };
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("sheet").hidden) return closeSheet();
+  if (!$("sheet").hidden || e.target.closest("input, textarea")) return;
+  if (e.key === "ArrowLeft") step(-1);
+  if (e.key === "ArrowRight") step(1);
 });
-$("maj").textContent = `Mis à jour le ${DATA.maj} · ${DATA.cours.length} séances, semaines 1–${weekNo(lastMon)}`;
+let sx = null, sy = null;
+$("main").addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+$("main").addEventListener("touchend", e => {
+  if (sx === null) return;
+  const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+});
+
+// ---- calendar subscription ----
+if (location.protocol.startsWith("http")) {
+  const icsUrl = new URL("horaire.ics", location.href).href;
+  $("webcal").href = icsUrl.replace(/^https?:/, "webcal:");
+  $("copy").onclick = async () => {
+    try { await navigator.clipboard.writeText(icsUrl); $("copy").textContent = "Lien copié ✓"; }
+    catch (e) { $("copy").textContent = icsUrl; }
+    setTimeout(() => { $("copy").textContent = "Copier le lien (Google)"; }, 2500);
+  };
+} else {
+  $("cal").hidden = true;
+}
+
+$("maj").textContent = `Mis à jour le ${DATA.maj} depuis HEH Planning · ${DATA.cours.length} séances · S1–S${weekNo(lastMon)}`;
 render();
+// keep "now" fresh (live card, now line, banner)
+setInterval(() => { now = new Date(); render(false); }, 60000);
 </script>
 
 </html>

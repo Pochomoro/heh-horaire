@@ -4,7 +4,8 @@ et génère une page mobile (index.html) + un calendrier (horaire.ics).
 Protocole de l'espace invités repris du projet EzHoraire
 (https://github.com/Frybex/EzHoraire, api/_moteurs/hyperplanning.py).
 
-Usage : python fetch.py            (dépendances : requests, pycryptodome)
+Usage : python fetch.py            (dépendances : requirements.txt)
+        python fetch.py --page     (régénère index.html sans rappeler l'école)
 """
 import base64
 import hashlib
@@ -189,7 +190,11 @@ def ics(data):
 
 
 if __name__ == "__main__":
-    data = recuperer()
+    import sys
+    if "--page" in sys.argv:   # régénère juste la page depuis horaire.json (dev du template)
+        data = json.load(open(os.path.join(ICI, "horaire.json"), encoding="utf-8"))
+    else:
+        data = recuperer()
     with open(os.path.join(ICI, "horaire.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     with open(os.path.join(ICI, "horaire.ics"), "w", encoding="utf-8", newline="") as f:
