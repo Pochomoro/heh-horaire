@@ -1,0 +1,275 @@
+<title>Horaire MA1 IA</title>
+<meta name="theme-color" content="#eef1f5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-thumb agenda — sticky week bar + day strip, then one big card per class */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --fg: #111c27;
+  --muted: #5d6b7a;
+  --line: #d6dde6;
+  --accent: #2f55d4;
+  --accent-ink: #ffffff;
+  --now: #e2562b;
+  --stripe-l: 52%;
+  --stripe-s: 62%;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d141b; --surface: #16202a; --fg: #e8eef4; --muted: #8f9eae; --line: #263443;
+    --accent: #7c9bff; --accent-ink: #0d141b; --now: #ff8a5c; --stripe-l: 64%; --stripe-s: 70%;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d141b; --surface: #16202a; --fg: #e8eef4; --muted: #8f9eae; --line: #263443;
+  --accent: #7c9bff; --accent-ink: #0d141b; --now: #ff8a5c; --stripe-l: 64%; --stripe-s: 70%;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+:root { padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--body); -webkit-text-size-adjust: 100%; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 48px; }
+
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  padding-block: 14px 10px; margin: 0 -16px; padding-inline: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { font: 800 1.35rem/1.1 var(--display); margin: 0; letter-spacing: -0.01em; }
+.brand .opt { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.weekbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.weekbar .lbl { flex: 1; min-width: 0; text-align: center; }
+.weekbar .lbl b { display: block; font: 600 1rem/1.2 var(--display); }
+.weekbar .lbl span { font-size: .8rem; color: var(--muted); }
+.nav {
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); font-size: 1.2rem; cursor: pointer; flex: none;
+}
+.nav:disabled { opacity: .35; cursor: default; }
+.today-btn {
+  height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); font-weight: 600; font-size: .85rem; cursor: pointer; flex: none;
+}
+
+.days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
+.day {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px;
+  padding: 7px 0 6px; cursor: pointer; display: grid; justify-items: center; gap: 1px; position: relative;
+}
+.day .dn { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.day .dd { font: 700 1.15rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.day .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+.day .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: .6; }
+.day.empty .dd { color: var(--muted); font-weight: 500; }
+.day.is-today { border-color: var(--now); }
+.day.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.day.sel .dn { color: var(--accent-ink); opacity: .85; }
+.day.sel .dots i { background: var(--accent-ink); opacity: .9; }
+
+.dayhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 20px 2px 10px; }
+.dayhead h2 { font: 800 1.6rem/1.1 var(--display); margin: 0; text-wrap: balance; }
+.dayhead span { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+
+.list { display: grid; gap: 10px; }
+.card {
+  --h: 210;
+  background: var(--surface); border-radius: 16px; padding: 14px 16px 14px 18px;
+  display: grid; grid-template-columns: 4.2rem 1fr; gap: 4px 14px; position: relative; overflow: hidden;
+  border: 1px solid var(--line);
+}
+.card::before {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 6px;
+  background: hsl(var(--h) var(--stripe-s) var(--stripe-l));
+}
+.time { font: 700 1.05rem/1.25 var(--mono); font-variant-numeric: tabular-nums; }
+.time small { display: block; font-weight: 500; color: var(--muted); font-size: .9rem; }
+.time .dur { display: block; margin-top: 4px; font: 500 .72rem var(--body); color: var(--muted); }
+.info { min-width: 0; }
+.info h3 { font: 600 1.12rem/1.25 var(--body); margin: 0 0 6px; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: .92rem; color: var(--muted); }
+.room {
+  font: 700 .95rem/1 var(--mono); color: var(--fg); padding: 5px 8px; border-radius: 8px;
+  border: 1.5px solid currentColor;
+}
+.room.none { color: var(--muted); border-style: dashed; font-weight: 500; }
+.tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.tag.opt { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.note { grid-column: 2; font-size: .85rem; color: var(--muted); }
+.card.now { border-color: var(--now); box-shadow: 0 0 0 1px var(--now); }
+.card.now .live { color: var(--now); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
+.card.past { opacity: .55; }
+
+.gap { text-align: center; font-size: .8rem; color: var(--muted); padding: 2px 0; }
+.empty-day {
+  text-align: center; padding: 40px 16px; border: 1.5px dashed var(--line); border-radius: 16px; color: var(--muted);
+}
+.empty-day b { display: block; font: 800 1.3rem var(--display); color: var(--fg); margin-bottom: 4px; }
+
+footer { margin-top: 28px; font-size: .78rem; color: var(--muted); display: grid; gap: 4px; }
+
+@media (min-width: 560px) { .day .dd { font-size: 1.3rem; } }
+@media (prefers-reduced-motion: no-preference) {
+  .list > * { animation: rise .22s ease-out both; }
+  @keyframes rise { from { transform: translateY(4px); opacity: .4; } }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>MA1 Ingé ind.</h1>
+      <span class="opt" id="opt"></span>
+    </div>
+    <div class="weekbar">
+      <button class="nav" id="prev" aria-label="Semaine précédente">‹</button>
+      <div class="lbl"><b id="wk"></b><span id="wkr"></span></div>
+      <button class="nav" id="next" aria-label="Semaine suivante">›</button>
+      <button class="today-btn" id="today">Auj.</button>
+    </div>
+    <nav class="days" id="days" aria-label="Jours"></nav>
+  </header>
+
+  <div class="dayhead"><h2 id="dtitle"></h2><span id="dsum"></span></div>
+  <main class="list" id="list"></main>
+
+  <footer>
+    <span id="maj"></span>
+    <span>Source : HEH Planning, cours tagués pour ton option + cours sans option (St Éloi, projet entrepreneurial…).</span>
+  </footer>
+</div>
+
+<script>
+const DATA = /*DATA*/null;
+const JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven"];
+const JOURS_L = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const $ = id => document.getElementById(id);
+
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const monday = d => addDays(d, -((d.getDay() + 6) % 7));
+const mins = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+
+const byDate = {};
+for (const c of DATA.cours) (byDate[c.date] ||= []).push(c);
+const dates = Object.keys(byDate).sort();
+const firstMon = monday(parse(dates[0]));
+const lastMon = monday(parse(dates[dates.length - 1]));
+const weekNo = m => Math.round((m - firstMon) / 6048e5) + 1;
+
+// Stable hue per course name
+const hue = name => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % 360; };
+
+const now = new Date();
+let selDate;
+function initialDate() {
+  // Today if weekday; otherwise next Monday. Clamp to the published range.
+  let d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (d.getDay() === 6) d = addDays(d, 2);
+  if (d.getDay() === 0) d = addDays(d, 1);
+  // After today's last class, jump to the next day with classes
+  const t = byDate[iso(d)];
+  if (iso(d) === iso(now) && t && mins(t[t.length - 1].fin) <= now.getHours() * 60 + now.getMinutes()) {
+    const nxt = dates.find(x => x > iso(d)); if (nxt) d = parse(nxt);
+  }
+  if (d < firstMon) d = parse(dates[0]);
+  if (d > addDays(lastMon, 4)) d = parse(dates[dates.length - 1]);
+  return d;
+}
+try { const s = sessionStorage.getItem("sel"); if (s) selDate = parse(s); } catch (e) {}
+if (!selDate || isNaN(selDate)) selDate = initialDate();
+
+function fmtDur(m) { const h = Math.floor(m / 60), r = m % 60; return h ? `${h}h${r ? String(r).padStart(2, "0") : ""}` : `${r} min`; }
+
+function render() {
+  try { sessionStorage.setItem("sel", iso(selDate)); } catch (e) {}
+  const mon = monday(selDate);
+  const fri = addDays(mon, 4);
+  $("opt").textContent = DATA.option;
+  $("wk").textContent = `Semaine ${weekNo(mon)}`;
+  $("wkr").textContent = `${mon.getDate()} ${mon.getMonth() !== fri.getMonth() ? MOIS[mon.getMonth()] + " " : ""}– ${fri.getDate()} ${MOIS[fri.getMonth()]}`;
+  $("prev").disabled = mon <= firstMon;
+  $("next").disabled = mon >= lastMon;
+
+  const days = $("days"); days.innerHTML = "";
+  for (let i = 0; i < 5; i++) {
+    const d = addDays(mon, i), k = iso(d), n = (byDate[k] || []).length;
+    const b = document.createElement("button");
+    b.className = "day" + (n ? "" : " empty") + (k === iso(now) ? " is-today" : "") + (k === iso(selDate) ? " sel" : "");
+    b.setAttribute("aria-pressed", k === iso(selDate));
+    b.setAttribute("aria-label", `${JOURS_L[i]} ${d.getDate()}, ${n} cours`);
+    b.innerHTML = `<span class="dn">${JOURS[i]}</span><span class="dd">${d.getDate()}</span><span class="dots">${"<i></i>".repeat(Math.min(n, 4))}</span>`;
+    b.onclick = () => { selDate = d; render(); };
+    days.append(b);
+  }
+
+  const k = iso(selDate), list = $("list"), cs = byDate[k] || [];
+  const dow = (selDate.getDay() + 6) % 7;
+  $("dtitle").textContent = (k === iso(now) ? "Aujourd'hui" : k === iso(addDays(now, 1)) ? "Demain" : JOURS_L[dow]) + ` ${selDate.getDate()} ${MOIS[selDate.getMonth()]}`;
+  const total = cs.reduce((s, c) => s + mins(c.fin) - mins(c.debut), 0);
+  $("dsum").textContent = cs.length ? `${cs[0].debut}–${cs[cs.length - 1].fin} · ${fmtDur(total)} de cours` : "";
+  list.innerHTML = "";
+  if (!cs.length) {
+    list.innerHTML = `<div class="empty-day"><b>Pas cours</b>Rien de publié pour ce jour.</div>`;
+    return;
+  }
+  const nowM = now.getHours() * 60 + now.getMinutes(), isToday = k === iso(now);
+  cs.forEach((c, i) => {
+    if (i > 0) {
+      const g = mins(c.debut) - mins(cs[i - 1].fin);
+      if (g >= 30) { const p = document.createElement("div"); p.className = "gap"; p.textContent = `pause ${fmtDur(g)}`; list.append(p); }
+    }
+    const el = document.createElement("article");
+    const live = isToday && nowM >= mins(c.debut) && nowM < mins(c.fin);
+    const past = isToday && nowM >= mins(c.fin);
+    el.className = "card" + (live ? " now" : "") + (past ? " past" : "");
+    el.style.setProperty("--h", hue(c.matiere));
+    const rooms = c.salles.length
+      ? c.salles.map(s => `<span class="room">${esc(s)}</span>`).join("")
+      : `<span class="room none">salle ?</span>`;
+    el.innerHTML = `
+      <div class="time">${c.debut}<small>${c.fin}</small><span class="dur">${fmtDur(mins(c.fin) - mins(c.debut))}</span></div>
+      <div class="info">
+        ${live ? `<div class="live">● En cours</div>` : ""}
+        <h3>${esc(c.matiere)}</h3>
+        <div class="meta">${rooms}<span>${esc(c.profs.join(", "))}</span>
+          ${c.type ? `<span class="tag">${esc(c.type)}</span>` : ""}
+          ${c.etiquette === "pass" ? `<span class="tag opt">Passerelle</span>` : c.etiquette === "sans" ? `<span class="tag">Sans option</span>` : ""}
+        </div>
+      </div>
+      ${c.note ? `<div class="note">${esc(c.note)}</div>` : ""}`;
+    list.append(el);
+  });
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
+
+$("prev").onclick = () => { selDate = addDays(monday(selDate), -7); render(); };
+$("next").onclick = () => { selDate = addDays(monday(selDate), 7); render(); };
+$("today").onclick = () => { selDate = initialDate(); render(); };
+// Swipe left/right to change day
+let sx = null;
+$("list").addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, { passive: true });
+$("list").addEventListener("touchend", e => {
+  if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; sx = null;
+  if (Math.abs(dx) < 60) return;
+  let d = addDays(selDate, dx < 0 ? 1 : -1);
+  if (d.getDay() === 6) d = addDays(d, 2); if (d.getDay() === 0) d = addDays(d, -2);
+  if (d >= firstMon && d <= addDays(lastMon, 4)) { selDate = d; render(); }
+});
+$("maj").textContent = `Mis à jour le ${DATA.maj} · ${DATA.cours.length} séances, semaines 1–${weekNo(lastMon)}`;
+render();
+</script>
