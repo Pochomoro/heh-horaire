@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "04/10/2026 12h35",
+ "maj": "05/10/2026 13h32",
  "cours": [
   {
    "date": "2026-09-14",
@@ -618,6 +618,23 @@
    "annule": false
   },
   {
+   "date": "2026-10-07",
+   "debut": "13:30",
+   "fin": "17:30",
+   "matiere": "L'entreprise:Cont.Struc & enje",
+   "type": "",
+   "profs": [
+    "Baras"
+   ],
+   "salles": [
+    "1/29"
+   ],
+   "note": "",
+   "couleur": "#808080",
+   "etiquette": "pass",
+   "annule": false
+  },
+  {
    "date": "2026-10-08",
    "debut": "08:15",
    "fin": "10:15",
@@ -632,6 +649,23 @@
    "note": "",
    "couleur": "#808080",
    "etiquette": "",
+   "annule": false
+  },
+  {
+   "date": "2026-10-08",
+   "debut": "10:30",
+   "fin": "12:30",
+   "matiere": "L'entreprise:Cont.Struc & enje",
+   "type": "",
+   "profs": [
+    "Baras"
+   ],
+   "salles": [
+    "1/29"
+   ],
+   "note": "",
+   "couleur": "#808080",
+   "etiquette": "pass",
    "annule": false
   },
   {
