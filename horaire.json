@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "12/10/2026 14h02",
+ "maj": "13/10/2026 13h50",
  "cours": [
   {
    "date": "2026-09-14",
@@ -943,6 +943,23 @@
    "annule": false
   },
   {
+   "date": "2026-10-19",
+   "debut": "14:00",
+   "fin": "18:00",
+   "matiere": "Informatique embarquée",
+   "type": "",
+   "profs": [
+    "Maillez"
+   ],
+   "salles": [
+    "1/26"
+   ],
+   "note": "",
+   "couleur": "#F80379",
+   "etiquette": "",
+   "annule": false
+  },
+  {
    "date": "2026-10-20",
    "debut": "09:30",
    "fin": "12:30",
@@ -995,21 +1012,6 @@
    "note": "",
    "couleur": "#808080",
    "etiquette": "pass",
-   "annule": false
-  },
-  {
-   "date": "2026-10-30",
-   "debut": "08:15",
-   "fin": "10:15",
-   "matiere": "Project management",
-   "type": "",
-   "profs": [
-    "Bouillon"
-   ],
-   "salles": [],
-   "note": "",
-   "couleur": "#FCC8FF",
-   "etiquette": "",
    "annule": false
   },
   {
@@ -1363,6 +1365,23 @@
   },
   {
    "date": "2026-11-18",
+   "debut": "08:15",
+   "fin": "12:15",
+   "matiere": "Informatique embarquée",
+   "type": "",
+   "profs": [
+    "Maillez"
+   ],
+   "salles": [
+    "1/26"
+   ],
+   "note": "",
+   "couleur": "#F80379",
+   "etiquette": "",
+   "annule": false
+  },
+  {
+   "date": "2026-11-18",
    "debut": "13:30",
    "fin": "17:30",
    "matiere": "L'entreprise:Cont.Struc & enje",
@@ -1534,8 +1553,8 @@
   },
   {
    "date": "2026-11-24",
-   "debut": "13:30",
-   "fin": "17:30",
+   "debut": "13:45",
+   "fin": "17:45",
    "matiere": "Informatique embarquée",
    "type": "",
    "profs": [
@@ -1803,17 +1822,15 @@
   {
    "date": "2026-12-01",
    "debut": "13:30",
-   "fin": "17:30",
-   "matiere": "Informatique embarquée",
+   "fin": "15:30",
+   "matiere": "Project management",
    "type": "",
    "profs": [
-    "Maillez"
+    "Bouillon"
    ],
-   "salles": [
-    "1/26"
-   ],
+   "salles": [],
    "note": "",
-   "couleur": "#F80379",
+   "couleur": "#FCC8FF",
    "etiquette": "",
    "annule": false
   },
@@ -1954,24 +1971,7 @@
   {
    "date": "2026-12-07",
    "debut": "13:30",
-   "fin": "17:30",
-   "matiere": "Informatique embarquée",
-   "type": "",
-   "profs": [
-    "Maillez"
-   ],
-   "salles": [
-    "1/26"
-   ],
-   "note": "",
-   "couleur": "#F80379",
-   "etiquette": "",
-   "annule": false
-  },
-  {
-   "date": "2026-12-08",
-   "debut": "08:15",
-   "fin": "10:15",
+   "fin": "15:30",
    "matiere": "Project management",
    "type": "",
    "profs": [
