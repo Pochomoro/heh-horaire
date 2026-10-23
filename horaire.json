@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "22/10/2026 11h26",
+ "maj": "23/10/2026 11h22",
  "cours": [
   {
    "date": "2026-09-14",
@@ -1822,7 +1822,7 @@
   {
    "date": "2026-12-01",
    "debut": "13:30",
-   "fin": "15:30",
+   "fin": "16:30",
    "matiere": "Project management",
    "type": "",
    "profs": [
@@ -1986,7 +1986,7 @@
   {
    "date": "2026-12-08",
    "debut": "08:15",
-   "fin": "10:15",
+   "fin": "11:15",
    "matiere": "Project management",
    "type": "",
    "profs": [
