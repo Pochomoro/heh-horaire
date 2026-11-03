@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "02/11/2026 13h28",
+ "maj": "03/11/2026 12h57",
  "cours": [
   {
    "date": "2026-09-14",
@@ -1330,8 +1330,8 @@
   },
   {
    "date": "2026-11-16",
-   "debut": "13:30",
-   "fin": "15:30",
+   "debut": "13:00",
+   "fin": "16:00",
    "matiere": "Langues",
    "type": "",
    "profs": [
@@ -1340,7 +1340,7 @@
    "salles": [
     "2/SA"
    ],
-   "note": "",
+   "note": "Test TOEIC",
    "couleur": "#FFFFFF",
    "etiquette": "",
    "annule": false
