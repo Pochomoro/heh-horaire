@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "12/11/2026 13h45",
+ "maj": "13/11/2026 13h15",
  "cours": [
   {
    "date": "2026-09-14",
@@ -1518,8 +1518,26 @@
   },
   {
    "date": "2026-11-23",
+   "debut": "10:30",
+   "fin": "12:30",
+   "matiere": "Projet, bureau d'études",
+   "type": "",
+   "profs": [
+    "Cremer",
+    "Lerat"
+   ],
+   "salles": [
+    "1/27"
+   ],
+   "note": "",
+   "couleur": "#5C782A",
+   "etiquette": "",
+   "annule": false
+  },
+  {
+   "date": "2026-11-23",
    "debut": "13:30",
-   "fin": "16:30",
+   "fin": "14:30",
    "matiere": "Projet, bureau d'études",
    "type": "",
    "profs": [
