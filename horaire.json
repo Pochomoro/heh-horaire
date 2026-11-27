@@ -1,7 +1,7 @@
 {
  "formation": "MA1 Ingénieur industriel",
  "option": "PASS Info IA et Big Data",
- "maj": "26/11/2026 14h55",
+ "maj": "27/11/2026 14h54",
  "cours": [
   {
    "date": "2026-09-14",
@@ -2322,6 +2322,7 @@
     "Cremer"
    ],
    "salles": [
+    "1/21",
     "1/27"
    ],
    "note": "",
